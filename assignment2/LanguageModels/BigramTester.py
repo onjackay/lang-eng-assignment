@@ -65,6 +65,19 @@ class BigramTester(object):
             with codecs.open(filename, 'r', 'utf-8') as f:
                 self.unique_words, self.total_words = map(int, f.readline().strip().split(' '))
                 # YOUR CODE HERE
+                # Read the unigram probabilities
+                for i in range(self.unique_words):
+                    line = f.readline().strip().split(' ')
+                    self.index[line[1]] = int(line[0])
+                    self.word[int(line[0])] = line[1]
+                    self.unigram_count[int(line[0])] = int(line[2])
+
+                # Read the bigram probabilities
+                for line in f.readlines():
+                    if line.strip() == "-1":
+                        break
+                    line = line.strip().split(' ')
+                    self.bigram_prob[int(line[0])][int(line[1])] = float(line[2])
                 return True
         except IOError:
             print("Couldn't find bigram probabilities file {}".format(filename))
@@ -73,7 +86,10 @@ class BigramTester(object):
 
     def compute_entropy_cumulatively(self, word):
         # YOUR CODE HERE
-        pass
+        index = self.index.get(word, -1)
+        self.logProb += math.log(self.linear_interpolation(self.last_index, index))
+        self.last_index = index
+        self.test_words_processed += 1
 
     def process_test_file(self, test_filename):
         """
@@ -87,11 +103,24 @@ class BigramTester(object):
                 self.tokens = nltk.word_tokenize(f.read().lower()) 
                 for token in self.tokens:
                     self.compute_entropy_cumulatively(token)
+                self.logProb /= -len(self.tokens)
             return True
         except IOError:
             print('Error reading testfile')
             return False
 
+    def linear_interpolation(self, first_index, second_index):
+        if first_index in self.bigram_prob and second_index in self.bigram_prob[first_index]:
+            p1 = math.exp(self.bigram_prob[first_index][second_index])
+        else:
+            p1 = 0
+
+        if second_index in self.unigram_count:
+            p2 = self.unigram_count[second_index] / self.total_words
+        else:
+            p2 = 0
+
+        return self.lambda1 * p1 + self.lambda2 * p2 + self.lambda3
 
 def main():
     """

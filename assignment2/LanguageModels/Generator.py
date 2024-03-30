@@ -3,6 +3,7 @@ import argparse
 import codecs
 from collections import defaultdict
 import random
+import numpy as np
 
 """
 This file is part of the computer assignments for the course DD2417 Language engineering at KTH.
@@ -40,7 +41,7 @@ class Generator(object) :
         self.last_index = -1
 
         # The fraction of the probability mass given to unknown words.
-        self.lambda3 = 0.000001
+        self.lambda3 = 1e-8
 
         # The fraction of the probability mass given to unigram probabilities.
         self.lambda2 = 0.01 - self.lambda3
@@ -64,6 +65,19 @@ class Generator(object) :
             with codecs.open(filename, 'r', 'utf-8') as f:
                 self.unique_words, self.total_words = map(int, f.readline().strip().split(' '))
                 # YOUR CODE HERE
+                # Read the unigram probabilities
+                for i in range(self.unique_words):
+                    line = f.readline().strip().split(' ')
+                    self.index[line[1]] = int(line[0])
+                    self.word[int(line[0])] = line[1]
+                    self.unigram_count[int(line[0])] = int(line[2])
+
+                # Read the bigram probabilities
+                for line in f.readlines():
+                    if line.strip() == "-1":
+                        break
+                    line = line.strip().split(' ')
+                    self.bigram_prob[int(line[0])][int(line[1])] = float(line[2])
                 return True
         except IOError:
             print("Couldn't find bigram probabilities file {}".format(filename))
@@ -75,8 +89,36 @@ class Generator(object) :
         of the language model.
         """ 
         # YOUR CODE HERE
-        pass
+        for i in range(n):
+            if w not in self.index:
+                print(w)
+                w = np.random.choice(list(self.index.keys()))
+            else:
+                print(w)
+                curr_index = self.index[w]
 
+                # Randomly select the next word
+                words = self.bigram_prob[curr_index]
+                if len(words) == 0:
+                    w = np.random.choice(list(self.index.keys()))
+                else:
+                    p = [math.exp(words[index]) for index in words]
+                    p = [x/sum(p) for x in p]
+                    w = self.word[np.random.choice(list(words.keys()), p=p)]
+
+    def linear_interpolation(self, first_index, second_index):
+        if first_index in self.bigram_prob and second_index in self.bigram_prob[first_index]:
+            p1 = math.exp(self.bigram_prob[first_index][second_index])
+        else:
+            p1 = 0
+
+        if second_index in self.unigram_count:
+            p2 = self.unigram_count[second_index] / self.total_words
+        else:
+            p2 = 0
+
+        return self.lambda1 * p1 + self.lambda2 * p2 + self.lambda3
+        
 
 def main():
     """

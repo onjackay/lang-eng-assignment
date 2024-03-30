@@ -43,7 +43,21 @@ class BigramTrainer(object):
         :param token: The current word to be processed.
         """
         # YOUR CODE HERE
+        if token not in self.index:
+            self.index[token] = self.unique_words
+            self.word[self.unique_words] = token
+            self.unique_words += 1
 
+        # adjust unigram counts
+        curr_index = self.index[token]
+        self.unigram_count[curr_index] += 1
+        self.total_words += 1
+
+        # adjust bigram counts
+        if self.last_index != -1:
+            self.bigram_count[self.last_index][curr_index] += 1
+        
+        self.last_index = curr_index
 
     def stats(self):
         """
@@ -52,7 +66,17 @@ class BigramTrainer(object):
         rows_to_print = []
 
         # YOUR CODE HERE
+        rows_to_print.append(f'{self.unique_words} {self.total_words}')
 
+        for index, word in self.word.items():
+            rows_to_print.append(f'{index} {word} {self.unigram_count[index]}')
+
+        for prev_index, next_words in self.bigram_count.items():
+            for next_index, count in next_words.items():
+                prob = math.log(count / self.unigram_count[prev_index])
+                rows_to_print.append(f'{prev_index} {next_index} {prob:.15f}')
+        
+        rows_to_print.append("-1")
         return rows_to_print
 
     def __init__(self):
