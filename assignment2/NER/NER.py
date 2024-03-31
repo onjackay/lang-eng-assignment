@@ -51,9 +51,17 @@ class NER(object):
     def capitalized_token(self):
         return self.current_token != None and self.current_token.istitle()
 
-
     def first_token_in_sentence(self):
-           return self.last_token in [None, '.', '!', '?']
+        return self.last_token in [None, '.', '!', '?']
+    
+    def length_of_token(self):
+        return len(self.current_token)
+    
+    def number_of_capital_letters(self):
+        return sum(1 for c in self.current_token if c.isupper())
+    
+    def number_of_digits(self):
+        return sum(1 for c in self.current_token if c.isdigit())
 
     class FeatureFunction(object):
         def __init__(self, func):
@@ -128,8 +136,10 @@ class NER(object):
 
         # Here you can add your own features.
         self.features = [
-            NER.FeatureFunction(self.capitalized_token),
+            # NER.FeatureFunction(self.capitalized_token),
             NER.FeatureFunction(self.first_token_in_sentence),
+            NER.FeatureFunction(self.number_of_capital_letters),
+            NER.FeatureFunction(self.number_of_digits)
         ]
 
         if training_file:

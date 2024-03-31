@@ -17,10 +17,10 @@ class BinaryLogisticRegression(object):
 
     #  ------------- Hyperparameters ------------------ #
 
-    LEARNING_RATE = 0.01  # The learning rate.
+    LEARNING_RATE = 1e1  # The learning rate.
     CONVERGENCE_MARGIN = 0.001  # The convergence criterion.
     MAX_ITERATIONS = 100 # Maximal number of passes through the datapoints in stochastic gradient descent.
-    MINIBATCH_SIZE = 1000 # Minibatch size (only for minibatch gradient descent)
+    MINIBATCH_SIZE = 10 # Minibatch size (only for minibatch gradient descent)
 
     # ----------------------------------------------------------------------
 
@@ -68,7 +68,7 @@ class BinaryLogisticRegression(object):
         """
         The logistic function.
         """
-        return 1.0 / ( 1 + np.exp(-z) )
+        return 1.0 / ( 1 + math.exp(-z) )
 
 
     def conditional_prob(self, label, datapoint):
@@ -77,8 +77,10 @@ class BinaryLogisticRegression(object):
         """
 
         # REPLACE THE COMMAND BELOW WITH YOUR CODE
-
-        return 0
+        if label == 1:
+            return self.sigmoid(np.dot(self.theta, self.x[datapoint]))
+        else:
+            return 1 - self.sigmoid(np.dot(self.theta, self.x[datapoint]))
 
 
     def compute_gradient_for_all(self):
@@ -88,6 +90,8 @@ class BinaryLogisticRegression(object):
         """
 
         # YOUR CODE HERE
+        h = [self.sigmoid(np.dot(self.theta, self.x[i])) for i in range(self.DATAPOINTS)]
+        self.gradient = np.dot(self.x.T, h - self.y) / self.DATAPOINTS
 
 
     def compute_gradient_minibatch(self, minibatch):
@@ -97,6 +101,8 @@ class BinaryLogisticRegression(object):
         """
         
         # YOUR CODE HERE
+        h = [self.sigmoid(np.dot(self.theta, self.x[i])) for i in minibatch]
+        self.gradient = np.dot(self.x[minibatch].T, h - self.y[minibatch]) / len(minibatch)
 
 
     def compute_gradient(self, datapoint):
@@ -106,6 +112,8 @@ class BinaryLogisticRegression(object):
         """
 
         # YOUR CODE HERE
+        h = self.sigmoid(np.dot(self.theta, self.x[datapoint]))
+        self.gradient = self.x[datapoint] * (h - self.y[datapoint])
 
 
     def stochastic_fit(self):
@@ -115,6 +123,20 @@ class BinaryLogisticRegression(object):
         self.init_plot(self.FEATURES)
 
         # YOUR CODE HERE
+        for it in range(self.MAX_ITERATIONS * 100):
+            datapoint = np.random.randint(self.DATAPOINTS)
+
+            self.compute_gradient(datapoint)
+
+            self.theta -= self.LEARNING_RATE * self.gradient
+
+            if it % 100 == 0:
+                self.compute_gradient_for_all()
+                self.update_plot(np.sum(np.square(self.gradient)))
+
+                if all(np.abs(self.gradient) < self.CONVERGENCE_MARGIN):
+                    print('Converged after {} iterations'.format(it))
+                    break
 
 
     def minibatch_fit(self):
@@ -124,6 +146,19 @@ class BinaryLogisticRegression(object):
         self.init_plot(self.FEATURES)
 
         # YOUR CODE HERE
+        for it in range(self.MAX_ITERATIONS * 10):
+            minibatch = np.random.choice(self.DATAPOINTS, self.MINIBATCH_SIZE, replace=False)
+
+            self.compute_gradient_minibatch(minibatch)
+
+            self.theta -= self.LEARNING_RATE * self.gradient
+
+            if it % 10 == 0:
+                self.compute_gradient_for_all()
+                self.update_plot(np.sum(np.square(self.gradient)))
+                if all(np.abs(self.gradient) < self.CONVERGENCE_MARGIN):
+                    print('Converged after {} iterations'.format(it))
+                    break
 
 
     def fit(self):
@@ -133,6 +168,15 @@ class BinaryLogisticRegression(object):
         self.init_plot(self.FEATURES)
 
         # YOUR CODE HERE
+        for it in range(self.MAX_ITERATIONS):
+            self.compute_gradient_for_all()
+            if all(np.abs(self.gradient) < self.CONVERGENCE_MARGIN):
+                print('Converged after {} iterations'.format(it))
+                break
+
+            self.theta -= self.LEARNING_RATE * self.gradient
+            
+            self.update_plot(np.sum(np.square(self.gradient)))
 
 
     def classify_datapoints(self, test_data, test_labels):
@@ -190,7 +234,7 @@ class BinaryLogisticRegression(object):
         self.axes.set_ylim(0, max(max(self.val)) * 1.5)
 
         plt.draw()
-        plt.pause(1e-20)
+        plt.pause(1e-3)
 
 
     def init_plot(self, num_axes):
@@ -226,7 +270,7 @@ def main():
     b = BinaryLogisticRegression(x, y)
     b.fit()
     b.print_result()
-
+    input("Press Enter to continue...")
 
 if __name__ == '__main__':
     main()
