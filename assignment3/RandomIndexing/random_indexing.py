@@ -75,7 +75,8 @@ class RandomIndexing(object):
     ##
     def clean_line(self, line):
         # YOUR CODE HERE
-        line = filter(lambda x: x not in string.punctuation, line)
+        line = "".join(list(filter(lambda x: x not in string.punctuation and x not in string.digits, line)))
+        line = " ".join(line.split())
         return line
 
 
@@ -311,7 +312,7 @@ if __name__ == '__main__':
         ri = RandomIndexing(['example.txt'])
         with open(args.cleaned_output, 'w') as f:
             for part in ri.text_gen():
-                f.write("{}\n".format(" ".join(part)))
+                f.write("{}\n".format("".join(part)))
     else:
         dir_name = "data"
         filenames = [os.path.join(dir_name, fn) for fn in os.listdir(dir_name)]
