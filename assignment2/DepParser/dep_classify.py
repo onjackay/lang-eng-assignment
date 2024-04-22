@@ -3,7 +3,7 @@ import pickle
 from parse_dataset import Dataset
 from dep_parser import Parser
 from logreg import LogisticRegression
-
+import numpy as np
 
 class TreeConstructor:
     """
@@ -25,7 +25,26 @@ class TreeConstructor:
         #
         # YOUR CODE HERE
         #
-        pass
+        i, stack, pred_tree = 0, [], [0] * len(words)
+
+        while True:
+            feature = ds.get_features(words, tags, i, stack)
+
+            x = ds.features2array(feature)
+
+            probs = model.get_log_probs(x)
+            moves = self.__parser.valid_moves(i, stack, pred_tree)
+
+            y = None
+            for move in moves:
+                if y is None or probs[move] > probs[y]:
+                    y = move
+
+            if y is None:
+                break
+            i, stack, pred_tree = self.__parser.move(i, stack, pred_tree, y)
+
+        return pred_tree
 
     def evaluate(self, model, test_file, ds):
         """
@@ -38,7 +57,26 @@ class TreeConstructor:
         #
         # YOUR CODE HERE
         #
-        pass
+        with open(test_file) as f:
+            n_sentences = 0
+            correct_sentences = 0
+            n_arcs = 0
+            correct_arcs = 0
+
+            for w, tags, tree, relations in self.__parser.trees(f):
+                pred_tree = self.build(model, w, tags, ds)
+
+                for i in range(len(tree)):
+                    if pred_tree[i] == tree[i]:
+                        correct_arcs += 1
+                    n_arcs += 1
+
+                if pred_tree == tree:
+                    correct_sentences += 1
+                n_sentences += 1
+                
+            print(f"Sentence-level accuracy: {correct_sentences/n_sentences}")
+            print(f"UAS: {correct_arcs/n_arcs}")
 
 
 if __name__ == '__main__':
@@ -54,6 +92,7 @@ if __name__ == '__main__':
         # if model exists, load from file
         print("Loading existing model...")
         lr = pickle.load(open('model.pkl', 'rb'))
+        ds.to_arrays()
     else:
         # train model using minibatch GD
         lr = LogisticRegression()

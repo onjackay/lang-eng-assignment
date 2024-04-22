@@ -27,7 +27,7 @@ class LogisticRegression(object):
             self.theta = theta
 
         #  ------------- Hyperparameters ------------------ #
-        self.LEARNING_RATE = 0.1            # The learning rate.
+        self.LEARNING_RATE = 2e0            # The learning rate.
         self.MINIBATCH_SIZE = 256           # Minibatch size
         self.PATIENCE = 5                   # A max number of consequent epochs with monotonously
                                             # increasing validation loss for declaring overfitting
@@ -77,7 +77,10 @@ class LogisticRegression(object):
         #
         # YOUR CODE HERE
         #
-        return [], [], [], []
+        p = np.random.permutation(len(x))
+        train_ids = p[:int(len(p) * ratio)]
+        validation_ids = p[int(len(p) * ratio):]
+        return x[train_ids, :], y[train_ids], x[validation_ids, :], y[validation_ids]
 
 
     def loss(self, x, y):
@@ -87,7 +90,9 @@ class LogisticRegression(object):
         #
         # YOUR CODE HERE
         #
-        return -1
+        h = x @ self.theta
+        h = np.exp(h) / np.sum(np.exp(h), axis=1, keepdims=True)
+        return -np.sum(np.log(h[np.arange(len(y)), y])) / len(y)
 
 
     def conditional_log_prob(self, label, datapoint):
@@ -97,7 +102,9 @@ class LogisticRegression(object):
         #
         # YOUR CODE HERE
         #
-        return -1
+        h = datapoint @ self.theta
+        h = np.exp(h) / np.sum(np.exp(h))
+        return np.log(h[label])
 
 
     def compute_gradient(self, minibatch):
@@ -107,7 +114,10 @@ class LogisticRegression(object):
         #
         # YOUR CODE HERE
         #
-        pass
+        h = self.x[minibatch] @ self.theta
+        h = np.exp(h) / np.sum(np.exp(h), axis=1, keepdims=True)
+        for i in range(self.CLASSES):
+            self.gradient[:, i] = -(np.where(self.y[minibatch] == i, 1, 0) - h[:, i]) @ self.x[minibatch] / len(minibatch)
 
 
     def fit(self, x, y):
@@ -126,6 +136,22 @@ class LogisticRegression(object):
         #
         # YOUR CODE HERE
         #
+        prev_loss = self.loss(self.xv, self.yv)
+        patience = 0
+
+
+        for it in range(100):
+            minibatch = np.random.choice(self.TRAINING_DATAPOINTS, self.MINIBATCH_SIZE)
+            self.compute_gradient(minibatch)
+            self.theta -= self.LEARNING_RATE * self.gradient
+
+            self.update_plot(self.loss(self.x, self.y), self.loss(self.xv, self.yv))
+            loss = self.loss(self.xv, self.yv)
+
+            if loss > prev_loss:
+                patience += 1
+                if patience == self.PATIENCE:
+                    break
 
         print(f"Training finished in {time.time() - start} seconds")
 
@@ -198,7 +224,7 @@ class LogisticRegression(object):
         self.axes.set_ylim(0, max(max(self.val)) * 1.5)
 
         plt.draw()
-        plt.pause(1e-20)
+        plt.pause(1e-6)
 
 
     def init_plot(self, num_axes):
@@ -240,7 +266,7 @@ def main():
     b = LogisticRegression()
     b.fit(x[ind][:-20], y[ind][:-20])
     b.classify_datapoints(x[ind][-20:], y[ind][-20:])
-
+    input("Press any key to continue...")
 
 
 if __name__ == '__main__':

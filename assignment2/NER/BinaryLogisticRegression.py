@@ -120,7 +120,7 @@ class BinaryLogisticRegression(object):
         """
         Performs Stochastic Gradient Descent.
         """
-        self.init_plot(self.FEATURES)
+        # self.init_plot(self.FEATURES)
 
         # YOUR CODE HERE
         for it in range(self.MAX_ITERATIONS * 100):
@@ -143,7 +143,7 @@ class BinaryLogisticRegression(object):
         """
         Performs Mini-batch Gradient Descent.
         """
-        self.init_plot(self.FEATURES)
+        # self.init_plot(self.FEATURES)
 
         # YOUR CODE HERE
         for it in range(self.MAX_ITERATIONS * 10):
@@ -155,7 +155,7 @@ class BinaryLogisticRegression(object):
 
             if it % 10 == 0:
                 self.compute_gradient_for_all()
-                self.update_plot(np.sum(np.square(self.gradient)))
+                # self.update_plot(np.sum(np.square(self.gradient)))
                 if all(np.abs(self.gradient) < self.CONVERGENCE_MARGIN):
                     print('Converged after {} iterations'.format(it))
                     break
@@ -165,7 +165,7 @@ class BinaryLogisticRegression(object):
         """
         Performs Batch Gradient Descent
         """
-        self.init_plot(self.FEATURES)
+        # self.init_plot(self.FEATURES)
 
         # YOUR CODE HERE
         for it in range(self.MAX_ITERATIONS):
@@ -271,6 +271,7 @@ def main():
     b.fit()
     b.print_result()
     input("Press Enter to continue...")
+
 
 if __name__ == '__main__':
     main()
