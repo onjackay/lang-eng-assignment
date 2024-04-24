@@ -2,3 +2,4 @@
 **/.envs
 **/.venv
 **.pkl
+**/vocab.txt

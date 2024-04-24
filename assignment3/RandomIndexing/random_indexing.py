@@ -2,6 +2,7 @@ import os
 import argparse
 import time
 import string
+from turtle import distance
 import numpy as np
 from halo import Halo
 from sklearn.neighbors import NearestNeighbors
@@ -48,18 +49,19 @@ class RandomIndexing(object):
     ## @param      right_window_size  The right window size. Stored in an
     ##                                instance variable self__rws.
     ##
-    def __init__(self, filenames, dimension=2000, non_zero=100, non_zero_values=list([-1, 1]), left_window_size=3, right_window_size=3):
+    def __init__(self, filenames, dimension=2000, non_zero=100, non_zero_values=list([-1, 1]), left_window_size=3, right_window_size=3, metric='cosine'):
         self.__sources = filenames
         self.__vocab = set()
-        self.__dim = dimension
-        self.__non_zero = non_zero
+        self.__dim = int(dimension)
+        self.__non_zero = int(non_zero)
         # there is a list call in a non_zero_values just for Doxygen documentation purposes
         # otherwise, it gets documented as "[-1,"
         self.__non_zero_values = non_zero_values
-        self.__lws = left_window_size
-        self.__rws = right_window_size
+        self.__lws = int(left_window_size)
+        self.__rws = int(right_window_size)
         self.__cv = None
         self.__rv = None
+        self.__metric = metric
         
 
     ##
@@ -113,6 +115,10 @@ class RandomIndexing(object):
     ##
     def build_vocabulary(self):
         # YOUR CODE HERE
+        for line in self.text_gen():
+            for word in line.split():
+                self.__vocab.add(word)
+        self.__i2w = list(self.__vocab)
         self.write_vocabulary()
 
 
@@ -170,7 +176,22 @@ class RandomIndexing(object):
     ##
     def create_word_vectors(self):
         # YOUR CODE HERE
-        pass
+
+        # Initialize context vectors and random vectors
+        self.__cv = {word: np.zeros(self.__dim) for word in self.__vocab}
+        self.__rv = {word: np.zeros(self.__dim) for word in self.__vocab}
+        for word in self.__vocab:
+            ids = np.random.choice(self.__dim, self.__non_zero, replace=False)
+            self.__rv[word][ids] = np.random.choice(self.__non_zero_values, self.__non_zero)
+
+        # Pass through the text files
+        for line in self.text_gen():
+            words = line.split()
+            for i in range(len(words)):
+                for j in range(1, min(self.__lws, i)):
+                    self.__cv[words[i]] += self.__rv[words[i - j]]
+                for j in range(1, min(self.__rws, len(words) - i)):
+                    self.__cv[words[i]] += self.__rv[words[i + j]]
 
 
     ##
@@ -201,7 +222,18 @@ class RandomIndexing(object):
     ##
     def find_nearest(self, words, k=5, metric='cosine'):
         # YOUR CODE HERE
-        return [None]
+        
+        results = []
+        neigh = NearestNeighbors(n_neighbors=k, metric=metric)
+        neigh = neigh.fit(list(self.__cv.values()))
+        for word in words:
+            if word not in self.__vocab:
+                results.append([])
+            else:
+                distances, indices = neigh.kneighbors([self.__cv[word]], n_neighbors=k, return_distance=True)
+                results.append([(self.__i2w[idx], dis) for dis, idx in zip(distances[0], indices[0])])
+
+        return results
 
 
     ##
@@ -213,7 +245,10 @@ class RandomIndexing(object):
     ##
     def get_word_vector(self, word):
         # YOUR CODE HERE
-        return None
+        if word not in self.__vocab:
+            return None
+        else:
+            return self.__cv[word]
 
 
     ##
@@ -291,7 +326,7 @@ class RandomIndexing(object):
         text = input('> ')
         while text != 'q':
             text = text.split()
-            neighbors = self.find_nearest(text)
+            neighbors = self.find_nearest(text, metric=self.__metric)
 
             for w, n in zip(text, neighbors):
                 print("Neighbors for {}: {}".format(w, n))
@@ -303,6 +338,11 @@ if __name__ == '__main__':
     parser.add_argument('-fv', '--force-vocabulary', action='store_true', help='regenerate vocabulary')
     parser.add_argument('-c', '--cleaning', action='store_true', default=False)
     parser.add_argument('-co', '--cleaned_output', default='cleaned_example.txt', help='Output file name for the cleaned text')
+    parser.add_argument('-d', '--dimension', default=2000, help='Dimension of the word vectors')
+    parser.add_argument('-nz', '--non_zero', default=100, help='Number of non zero elements in a random word vector')
+    parser.add_argument('-ls', '--left_window_size', default=3, help='The left window size')
+    parser.add_argument('-rs', '--right_window_size', default=3, help='The right window size')
+    parser.add_argument('-m', '--metric', default='cosine', help='The metric to be used for nearest neighbors')
     args = parser.parse_args()
 
     if args.force_vocabulary:
@@ -317,5 +357,5 @@ if __name__ == '__main__':
         dir_name = "data"
         filenames = [os.path.join(dir_name, fn) for fn in os.listdir(dir_name)]
 
-        ri = RandomIndexing(filenames)
+        ri = RandomIndexing(filenames, dimension=args.dimension, non_zero=args.non_zero, left_window_size=args.left_window_size, right_window_size=args.right_window_size, metric=args.metric)
         ri.train_and_persist()
