@@ -31,14 +31,14 @@ class Word2Vec(object):
         """
         self.__pad_word = '<pad>'
         self.__sources = filenames
-        self.__H = dimension
-        self.__lws = window_size
-        self.__rws = window_size
+        self.__H = int(dimension)
+        self.__lws = int(window_size)
+        self.__rws = int(window_size)
         self.__C = self.__lws + self.__rws
-        self.__init_lr = learning_rate
-        self.__lr = learning_rate
-        self.__nsample = nsample
-        self.__epochs = epochs
+        self.__init_lr = float(learning_rate)
+        self.__lr = float(learning_rate)
+        self.__nsample = int(nsample)
+        self.__epochs = int(epochs)
         self.__nbrs = None
         self.__use_corrected = use_corrected
         self.__use_lr_scheduling = use_lr_scheduling
@@ -64,10 +64,9 @@ class Word2Vec(object):
         :param      line:  The line
         :type       line:  str
         """
-        #
-        # REPLACE WITH YOUR CODE HERE
-        #
-        return []
+        line = "".join(list(filter(lambda x: x not in string.punctuation and x not in string.digits, line)))
+        line = " ".join(line.split())
+        return line
 
 
     def text_gen(self):
@@ -98,10 +97,11 @@ class Word2Vec(object):
         :param      i:     Index of the focus word in the sentence
         :type       i:     int
         """
-        #
-        # REPLACE WITH YOUR CODE
-        # 
-        return []
+        context = []
+        for j in range(max(0, i - self.__lws), min(len(sent), i + self.__rws + 1)):
+            if j != i:
+                context.append(self.__w2i[sent[i]])
+        return context
 
 
     def skipgram_data(self):
@@ -114,10 +114,34 @@ class Word2Vec(object):
             a) list of focus words
             b) list of respective context words
         """
-        #
-        # REPLACE WITH YOUR CODE
-        # 
-        return [], []
+        # Build the maps between words and indexes and vice versa
+        self.__i2w = []
+        self.__w2i = {}
+        word_count = []
+
+        for line in self.text_gen():
+            for word in line.split():
+                if word not in self.__w2i:
+                    self.__i2w.append(word)
+                    self.__w2i[word] = len(self.__i2w) - 1
+                    word_count.append(0)
+                idx = self.__w2i[word]
+                word_count[idx] += 1
+        self.__V = len(self.__i2w)
+
+        # Calculate the unigram distribution and corrected unigram distribution
+        self.__unigram = np.array(word_count) / np.sum(word_count)
+        self.__corrected_unigram = self.__unigram ** 0.75 / np.sum(self.__unigram ** 0.75)
+
+        # Build a list of focus words and a list of respective context words
+        focus, context = [], []
+        for line in self.text_gen():
+            sent = line.split()
+            for i in range(len(sent)):
+                focus.append(self.__w2i[sent[i]])
+                context.append(self.get_context(sent, i))
+
+        return focus, context
 
 
     def sigmoid(self, x):
@@ -139,10 +163,28 @@ class Word2Vec(object):
         :param      pos:        The index of the current positive example
         :type       pos:        int
         """
-        #
-        # REPLACE WITH YOUR CODE
-        #
-        return []
+        valid_ids = np.setdiff1d(np.arange(self.__V), [xb, pos])
+        p = self.__corrected_unigram[valid_ids]
+        p /= np.sum(p)
+        return np.random.choice(valid_ids, number, replace=False, p=p)
+
+
+    def update(self, x, pos, negs):
+
+        # Gradient for the input vector
+        grad_in = self.__U[pos] * (self.sigmoid(np.dot(self.__U[pos], self.__W[x])) - 1) \
+                + self.sigmoid(np.dot(self.__U[negs], self.__W[x])) @ self.__U[negs]
+        
+        # Gradient for the output vector of the positive example
+        grad_out_pos = self.__W[x] * (self.sigmoid(np.dot(self.__U[pos], self.__W[x])) - 1)
+
+        # Gradient for the output vector of the negative examples
+        grad_out_negs =  np.outer(self.sigmoid(np.dot(self.__U[negs], self.__W[x])), self.__W[x])
+
+        # Update
+        self.__W[x] -= self.__lr * grad_in
+        self.__U[pos] -= self.__lr * grad_out_pos
+        self.__U[negs] -= self.__lr * grad_out_negs
 
 
     def train(self):
@@ -154,18 +196,27 @@ class Word2Vec(object):
         print("Dataset contains {} datapoints".format(N))
 
         # REPLACE WITH YOUR RANDOM INITIALIZATION
-        self.__W = np.zeros((100, 50))
-        self.__U = np.zeros((100, 50))
+        self.__W = np.random.normal(0, 0.1, (self.__V, self.__H))
+        self.__U = np.random.normal(0, 0.1, (self.__V, self.__H))
 
         for ep in range(self.__epochs):
             for i in tqdm(range(N)):
-                #
-                # YOUR CODE HERE 
-                #
-                pass
+                if self.__use_lr_scheduling:
+                    self.__lr = self.__init_lr * max(1 - (ep * self.__epochs + i) / (N * self.__epochs + 1), 1e-4)
+
+                for pos in t[i]:
+                    negs = self.negative_sampling(self.__nsample, x[i], pos)
+                    self.update(x[i], pos, negs)
+            
+            # Compute the loss
+            loss = 0
+            for i in range(N):
+                for pos in t[i]:
+                    loss += np.log(self.sigmoid(np.dot(self.__U[pos], self.__W[x[i]])))
+            print("Epoch {}: loss = {}".format(ep, -loss / N))
 
 
-    def find_nearest(self, words, metric):
+    def find_nearest(self, words, metric, k=5):
         """
         Function returning k nearest neighbors with distances for each word in `words`
         
@@ -191,10 +242,17 @@ class Word2Vec(object):
         :param      metric:  The similarity/distance metric
         :type       metric:  string
         """
-        #
-        # REPLACE WITH YOUR CODE
-        #
-        return []
+        results = []
+        neigh = NearestNeighbors(n_neighbors=k, metric=metric)
+        neigh = neigh.fit(self.__W)
+        for word in words:
+            if word not in self.__w2i:
+                results.append([])
+            else:
+                distances, indices = neigh.kneighbors([self.__W[self.__w2i[word]]], n_neighbors=k, return_distance=True)
+                results.append([(self.__i2w[idx], dis) for dis, idx in zip(distances[0], indices[0])])
+
+        return results
 
 
     def write_to_file(self):

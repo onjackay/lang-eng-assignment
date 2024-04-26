@@ -188,10 +188,9 @@ class RandomIndexing(object):
         for line in self.text_gen():
             words = line.split()
             for i in range(len(words)):
-                for j in range(1, min(self.__lws, i)):
-                    self.__cv[words[i]] += self.__rv[words[i - j]]
-                for j in range(1, min(self.__rws, len(words) - i)):
-                    self.__cv[words[i]] += self.__rv[words[i + j]]
+                for j in range(max(0, i - self.__lws), min(len(words), i + self.__rws + 1)):
+                    if i != j:
+                        self.__cv[words[i]] += self.__rv[words[j]]
 
 
     ##
