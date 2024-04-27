@@ -200,13 +200,14 @@ class Word2Vec(object):
         self.__U = np.random.normal(0, 0.1, (self.__V, self.__H))
 
         for ep in range(self.__epochs):
+            ids = np.random.permutation(N)
             for i in tqdm(range(N)):
                 if self.__use_lr_scheduling:
                     self.__lr = self.__init_lr * max(1 - (ep * self.__epochs + i) / (N * self.__epochs + 1), 1e-4)
 
-                for pos in t[i]:
-                    negs = self.negative_sampling(self.__nsample, x[i], pos)
-                    self.update(x[i], pos, negs)
+                for pos in t[ids[i]]:
+                    negs = self.negative_sampling(self.__nsample, x[ids[i]], pos)
+                    self.update(x[ids[i]], pos, negs)
             
             # Compute the loss
             loss = 0

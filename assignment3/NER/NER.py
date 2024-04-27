@@ -83,9 +83,13 @@ class NER(object):
                     self.mo.seek(p)
                 else:
                     v = self.w2id.get(NER.PAD_SYMBOL)
+                    if not v:
+                        print(token, "not found in word vectors")
                     return self.vec_cache[v] if v else [-1] * self.D
         else:
             v = self.w2id.get(NER.PAD_SYMBOL)
+            if not v:
+                print(token, "not found in word vectors")
             return self.vec_cache[v] if v else [-1] * self.D
         line = self.mo.readline()
         vec = list(map(float, line.decode('utf8').split()[1:]))
@@ -94,6 +98,7 @@ class NER(object):
             self.w2id[token] = self.current_token_id
             self.vec_cache[self.current_token_id,:] = vec
             self.current_token_id += 1
+
         return vec
 
 
@@ -164,12 +169,19 @@ class NER(object):
             d = map(float, f.read().split(' '))
             return d
         return None
+    
+    def write_model(self, model):
+        """
+        Write a model to file
+        """
+        with codecs.open("model", 'w', 'utf-8') as f:
+            f.write(' '.join(map(str, model)))
 
     # ----------------------------------------------------------
 
 
     def __init__(self, training_file, test_file, model_file, word_vectors_file,
-                 stochastic_gradient_descent, minibatch_gradient_descent, lowercase_fallback):
+                 stochastic_gradient_descent, minibatch_gradient_descent, lowercase_fallback, lr=None):
         """
         Constructor. Trains and tests a NER model using binary logistic regression.
         """
@@ -211,14 +223,19 @@ class NER(object):
             training_set = self.read_and_process_data(training_file)
             if training_set:
                 start_time = time.time()
-                b = BinaryLogisticRegression(training_set.x, training_set.y)
+                b = BinaryLogisticRegression(training_set.x, training_set.y, lr=lr)
                 if stochastic_gradient_descent:
-                    b.stochastic_fit_with_early_stopping()
+                    # b.stochastic_fit_with_early_stopping()
+                    b.stochastic_fit()
                 elif minibatch_gradient_descent:
-                    b.minibatch_fit_with_early_stopping()
+                    # b.minibatch_fit_with_early_stopping()
+                    b.minibatch_fit()
                 else:
                     b.fit()
                 print("Model training took {}s".format(round(time.time() - start_time, 2)))
+
+                # Write the model to file
+                self.write_model(b.theta)
 
         else:
             model = self.read_model(model_file)
@@ -255,6 +272,7 @@ def main():
     group2.add_argument('-mgd', action='store_true', default=False, help='Use mini-batch gradient descent')
 
     parser.add_argument('-lcf', '--lowercase-fallback', action='store_true')
+    parser.add_argument('-lr', type=float, help='learning rate')
 
 
     if len(sys.argv[1:])==0:
@@ -262,7 +280,7 @@ def main():
         parser.exit()
     arguments = parser.parse_args()
 
-    ner = NER(arguments.d, arguments.t, arguments.m, arguments.w, arguments.s, arguments.mgd, arguments.lowercase_fallback)
+    ner = NER(arguments.d, arguments.t, arguments.m, arguments.w, arguments.s, arguments.mgd, arguments.lowercase_fallback, arguments.lr)
     ner.mo.close()
     ner.fo.close()
 

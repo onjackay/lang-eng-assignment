@@ -94,4 +94,6 @@ Query: Harry Gryffindor chair wand good enter on school
         ```
     When the left window size is too small or too large, the performance becomes worse.
 
-    
+## Word2vec
+
+The Word2vec embeddings give less intuitive results than random indexing.
