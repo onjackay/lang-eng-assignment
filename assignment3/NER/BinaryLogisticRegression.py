@@ -20,8 +20,8 @@ class BinaryLogisticRegression(object):
 
     LEARNING_RATE = 1e0  # The learning rate.
     CONVERGENCE_MARGIN = 0.001  # The convergence criterion.
-    MAX_ITERATIONS = 100 # Maximal number of passes through the datapoints in stochastic gradient descent.
-    MINIBATCH_SIZE = 100 # Minibatch size (only for minibatch gradient descent)
+    MAX_ITERATIONS = 200 # Maximal number of passes through the datapoints in stochastic gradient descent.
+    MINIBATCH_SIZE = 20 # Minibatch size (only for minibatch gradient descent)
 
     # ----------------------------------------------------------------------
 
@@ -58,6 +58,7 @@ class BinaryLogisticRegression(object):
             self.y = np.array(y)
 
             self.weights = np.where(self.y == 1, (self.DATAPOINTS - np.sum(y)) / self.DATAPOINTS, np.sum(y) / self.DATAPOINTS)
+            print(self.weights)
 
             # The weights we want to learn in the training phase.
             self.theta = np.random.uniform(-1, 1, self.FEATURES)
@@ -129,9 +130,6 @@ class BinaryLogisticRegression(object):
         """
         # YOUR CODE HERE
         h = self.sigmoid(self.x @ self.theta)
-        # print(self.x)
-        # print(self.theta)
-        # print(h)
         return -np.sum(self.y * np.log(h) + (1 - self.y) * np.log(1 - h)) / self.DATAPOINTS
 
 

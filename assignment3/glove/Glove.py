@@ -125,8 +125,11 @@ class Glove:
         """
 
         # REPLACE WITH YOUR CODE
-
-        return []
+        context = []
+        for j in range(max(0, i - self.left_window_size), min(len(self.tokens), i + self.right_window_size + 1)):
+            if j != i:
+                context.append(self.get_word_id(self.tokens[j]))
+        return context
 
 
     def process_files( self, file_or_dir ) :
@@ -184,8 +187,13 @@ class Glove:
         """
 
         # REPLACE WITH YOUR CODE 
-        
-        return 0.0
+        loss = 0.0
+        for i, context in self.X.items():
+            for j, count in context.items():
+                diff = np.dot(self.w_vector[i], self.w_tilde_vector[j]) - math.log(count)
+                loss += self.f(count) * diff ** 2
+            
+        return loss
 
     
 
@@ -198,8 +206,11 @@ class Glove:
         """
 
         # REPLACE WITH YOUR CODE 
+        l = np.dot(self.w_vector[i], self.w_tilde_vector[j]) - math.log(self.X[i][j])
+        wi_vector_grad = 2 * l * self.w_tilde_vector[j]
+        wj_tilde_vector_grad = 2 * l * self.w_vector[i]
         
-        return None, None
+        return wi_vector_grad, wj_tilde_vector_grad
         
         
     def train( self ) :
@@ -209,10 +220,27 @@ class Glove:
         iterations = 0
 
         # YOUR CODE HERE
+        # Initialize the sample distribution
+        distr_i = np.zeros(len(self.id2word))
+        distr_j = [[]] * len(self.id2word)
+        for i, context in self.X.items():
+            for j, count in context.items():
+                distr_i[i] += self.f(count)
+                distr_j[i].append(self.f(count))
+            distr_j = [x / distr_i[i] for x in distr_j[i]]
+        distr_i = distr_i / np.sum(distr_i)
+            
         
         while ( self.patience > 0 ) :
 
             # YOUR CODE HERE
+            # Sample a word i
+            i = np.random.choice(len(self.id2word), p=distr_i)
+            # Sample a word j
+            j = np.random.choice(self.X[i].keys(), p=distr_j[i])
+
+            # Compute the gradient
+            wi_vector_grad, wj_tilde_vector_grad = self.compute_gradient(i, j)
 
             if iterations%1000000 == 0 :
                 self.write_word_vectors_to_file( self.outputfile )
@@ -294,7 +322,7 @@ def main() :
 
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Glove trainer')
-    parser.add_argument('--file', '-f', type=str,  default='../RandomIndexing/data', help='The files used in the training.')
+    parser.add_argument('--file', '-f', type=str,  default='../data', help='The files used in the training.')
     parser.add_argument('--output', '-o', type=str, default='vectors.txt', help='The file where the vectors are stored.')
     parser.add_argument('--left_window_size', '-lws', type=int, default='2', help='Left context window size')
     parser.add_argument('--right_window_size', '-rws', type=int, default='2', help='Right context window size')

@@ -3,3 +3,5 @@
 **/.venv
 **.pkl
 **/vocab.txt
+*.pkl
+*.vectors
