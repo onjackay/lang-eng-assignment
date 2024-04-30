@@ -1,0 +1,1 @@
+python NER.py -d ner_data/ner_training.csv -t ner_data/ner_test.csv -w en.vectors -lcf -b -lr 0.1

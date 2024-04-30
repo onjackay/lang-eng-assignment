@@ -8,6 +8,7 @@ import os.path
 import argparse
 from collections import defaultdict
 from sklearn.neighbors import NearestNeighbors
+from tqdm import tqdm
 
 
 """
@@ -55,7 +56,7 @@ class Glove:
         self.learning_rate = 0.05
 
         # The number of times we can tolerate that loss increases
-        self.patience = 5
+        self.patience = 3
     
         # Padding at the beginning and end of the token stream
         self.pad_word = '<pad>'
@@ -220,33 +221,50 @@ class Glove:
         iterations = 0
 
         # YOUR CODE HERE
-        # Initialize the sample distribution
+        # Initialize the sample distribution of i
+        print('Initializing the sample distribution')
         distr_i = np.zeros(len(self.id2word))
-        distr_j = [[]] * len(self.id2word)
         for i, context in self.X.items():
             for j, count in context.items():
                 distr_i[i] += self.f(count)
-                distr_j[i].append(self.f(count))
-            distr_j = [x / distr_i[i] for x in distr_j[i]]
         distr_i = distr_i / np.sum(distr_i)
             
+        prev_loss = self.loss()
         
+        print('Starting training')
         while ( self.patience > 0 ) :
 
             # YOUR CODE HERE
             # Sample a word i
             i = np.random.choice(len(self.id2word), p=distr_i)
             # Sample a word j
-            j = np.random.choice(self.X[i].keys(), p=distr_j[i])
+            distr_j = np.zeros(len(self.X[i]))
+            for j, count in enumerate(self.X[i].values()):
+                distr_j[j] = self.f(count)
+            distr_j = distr_j / np.sum(distr_j)
+            j = np.random.choice(list(self.X[i].keys()), p=distr_j)
 
             # Compute the gradient
             wi_vector_grad, wj_tilde_vector_grad = self.compute_gradient(i, j)
 
-            if iterations%1000000 == 0 :
+            # Update the vectors
+            self.w_vector[i] -= self.learning_rate * wi_vector_grad
+            self.w_tilde_vector[j] -= self.learning_rate * wj_tilde_vector_grad
+
+            if (iterations + 1)%10000 == 0 :
                 self.write_word_vectors_to_file( self.outputfile )
                 self.write_temp_file( self.temp_file )
-                self.learning_rate *= 0.99
-                
+                self.learning_rate *= 0.995
+
+                curr_loss = self.loss()
+                if curr_loss > prev_loss:
+                    self.patience -= 1
+                else:
+                    self.patience = 3
+                prev_loss = curr_loss    
+                print( 'Loss after', "{:,}".format(iterations), 'iterations:', curr_loss )            
+            
+            iterations += 1
 
     #
     #  End of loss function, gradient descent, etc.
@@ -322,7 +340,7 @@ def main() :
 
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Glove trainer')
-    parser.add_argument('--file', '-f', type=str,  default='../data', help='The files used in the training.')
+    parser.add_argument('--file', '-f', type=str,  default='../small_data', help='The files used in the training.')
     parser.add_argument('--output', '-o', type=str, default='vectors.txt', help='The file where the vectors are stored.')
     parser.add_argument('--left_window_size', '-lws', type=int, default='2', help='Left context window size')
     parser.add_argument('--right_window_size', '-rws', type=int, default='2', help='Right context window size')

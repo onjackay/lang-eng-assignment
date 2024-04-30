@@ -5,3 +5,4 @@
 **/vocab.txt
 *.pkl
 *.vectors
+*.txt

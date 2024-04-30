@@ -353,7 +353,7 @@ if __name__ == '__main__':
             for part in ri.text_gen():
                 f.write("{}\n".format("".join(part)))
     else:
-        dir_name = "data"
+        dir_name = "../data"
         filenames = [os.path.join(dir_name, fn) for fn in os.listdir(dir_name)]
 
         ri = RandomIndexing(filenames, dimension=args.dimension, non_zero=args.non_zero, left_window_size=args.left_window_size, right_window_size=args.right_window_size, metric=args.metric)

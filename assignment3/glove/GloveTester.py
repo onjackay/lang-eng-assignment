@@ -71,7 +71,18 @@ class GloveTester:
         #
         # REPLACE WITH YOUR CODE
         #
-        return []
+        results = []
+        neigh = NearestNeighbors(n_neighbors=5, metric=metric)
+        neigh = neigh.fit(list(self.w_vector.values()))
+        for word in words:
+            if word not in self.word2id:
+                results.append([])
+            else:
+                i = self.word2id[word]
+                distances, indices = neigh.kneighbors([self.w_vector[i]], n_neighbors=5, return_distance=True)
+                results.append([(self.id2word[idx], dis) for dis, idx in zip(distances[0], indices[0])])
+
+        return results
 
 
 
