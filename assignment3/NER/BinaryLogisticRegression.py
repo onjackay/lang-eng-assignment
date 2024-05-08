@@ -20,7 +20,7 @@ class BinaryLogisticRegression(object):
 
     LEARNING_RATE = 1e0  # The learning rate.
     CONVERGENCE_MARGIN = 0.001  # The convergence criterion.
-    MAX_ITERATIONS = 200 # Maximal number of passes through the datapoints in stochastic gradient descent.
+    MAX_ITERATIONS = 100 # Maximal number of passes through the datapoints in stochastic gradient descent.
     MINIBATCH_SIZE = 20 # Minibatch size (only for minibatch gradient descent)
 
     # ----------------------------------------------------------------------

@@ -1,8 +1,13 @@
 .vscode
-**/.envs
-**/.venv
+.envs
+.venv
 **.pkl
 **/vocab.txt
 *.pkl
 *.vectors
 *.txt
+model
+script.py
+test.py
+*.shuffled
+*.pyc
